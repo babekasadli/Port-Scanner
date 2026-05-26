@@ -9,30 +9,40 @@ def get_arguments():
     return parser.parse_args()
 
 def scan_port(ip, port):
-    # Create a new socket using the IPv4 address family and TCP protocol
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # Set a timeout of 1 second so the scanner doesn't hang on closed ports
-    sock.settimeout(1)
-
-    # connect_ex returns 0 if the connection was successful
-    result = sock.connect_ex((ip, port))
-    if result == 0:
-        print(f"[+] Port {port} is OPEN")
-
-    # Always close the socket after using it
-    sock.close()
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        result = sock.connect_ex((ip, port))
+        if result == 0:
+            print(f"[+] Port {port} is OPEN")
+        sock.close()
+    except socket.gaierror:
+        # This exception is raised for address-related errors, like an invalid hostname
+        print("\n[-] Hostname could not be resolved.")
+        sys.exit(1)
+    except socket.error:
+        # This catches general socket errors
+        print("\n[-] Could not connect to server.")
+        sys.exit(1)
 
 if __name__ == "__main__":
     options = get_arguments()
     target_ip = options.target
 
-    # Parse the start and end ports from the input string
-    start_port, end_port = map(int, options.ports.split('-'))
+    try:
+        start_port, end_port = map(int, options.ports.split('-'))
+    except ValueError:
+        print("[-] Invalid port format. Please use start-end (e.g., 1-1024)")
+        sys.exit(1)
 
     print(f"[*] Scanning target {target_ip} from port {start_port} to {end_port}...\n")
 
-    # Loop through the specified range and scan each port sequentially
-    for port in range(start_port, end_port + 1):
-        scan_port(target_ip, port)
+    try:
+        for port in range(start_port, end_port + 1):
+            scan_port(target_ip, port)
+    except KeyboardInterrupt:
+        # This catches the Ctrl+C signal from the user
+        print("\n[-] Scan canceled by user. Exiting...")
+        sys.exit(1)
 
     print("\n[*] Scan completed.")
